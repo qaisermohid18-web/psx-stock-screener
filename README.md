@@ -53,5 +53,3 @@ def get_live_data(ticker):
 - **Plotly** — interactive charts
 - **yfinance** — live market data (when enabled)
 
-## CV description (copy this)
-> Built a PSX stock screener in Python covering 25+ equities across 9 sectors. Features include real-time filtering by P/E ratio, dividend yield, and volume spikes, with interactive price charts and moving average overlays. Deployed on Streamlit Cloud.
