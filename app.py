@@ -66,58 +66,46 @@ PSX_STOCKS = {
 
 @st.cache_data(ttl=300)
 def load_all_stocks():
-    """
-    Generates realistic mock data. 
-    Replace this function body with yfinance calls for live data.
-    """
-    random.seed(42)
     rows = []
     for ticker, (name, sector) in PSX_STOCKS.items():
-        base = random.uniform(50, 1200)
-        prev = base * random.uniform(0.92, 1.08)
-        high52 = base * random.uniform(1.05, 1.60)
-        low52  = base * random.uniform(0.50, 0.95)
-        volume = random.randint(200_000, 8_000_000)
-        avg_vol = volume * random.uniform(0.7, 1.4)
-        eps     = random.uniform(2, 80)
-        pe      = round(base / eps, 1) if eps > 0 else None
-        div_yield = random.uniform(0, 8)
-        mktcap  = base * random.randint(100_000_000, 2_000_000_000) / 1e9
-        change  = ((base - prev) / prev) * 100
+        try:
+            t = yf.Ticker(ticker + ".KA")
+            info = t.info
+            hist = t.history(period="2d")
 
-        rows.append({
-            "Ticker":       ticker,
-            "Name":         name,
-            "Sector":       sector,
-            "Price (PKR)":  round(base, 2),
-            "Change %":     round(change, 2),
-            "P/E Ratio":    pe,
-            "EPS":          round(eps, 2),
-            "Div Yield %":  round(div_yield, 2),
-            "52W High":     round(high52, 2),
-            "52W Low":      round(low52, 2),
-            "Volume":       volume,
-            "Avg Volume":   int(avg_vol),
-            "Mkt Cap (B)":  round(mktcap, 2),
-        })
+            price  = round(hist["Close"].iloc[-1], 2) if len(hist) >= 1 else None
+            prev   = round(hist["Close"].iloc[-2], 2) if len(hist) >= 2 else price
+            change = round(((price - prev) / prev) * 100, 2) if price and prev else 0
+
+            rows.append({
+                "Ticker":       ticker,
+                "Name":         name,
+                "Sector":       sector,
+                "Price (PKR)":  price,
+                "Change %":     change,
+                "P/E Ratio":    round(info.get("trailingPE", 0), 1) or None,
+                "EPS":          round(info.get("trailingEps", 0), 2),
+                "Div Yield %":  round((info.get("dividendYield") or 0) * 100, 2),
+                "52W High":     round(info.get("fiftyTwoWeekHigh", 0), 2),
+                "52W Low":      round(info.get("fiftyTwoWeekLow", 0), 2),
+                "Volume":       info.get("volume", 0),
+                "Avg Volume":   info.get("averageVolume", 0),
+                "Mkt Cap (B)":  round((info.get("marketCap") or 0) / 1e9, 2),
+            })
+        except Exception:
+            pass  # skip tickers that fail silently
 
     return pd.DataFrame(rows)
 
 
 @st.cache_data(ttl=300)
 def load_price_history(ticker):
-    """Mock 1-year daily price history. Replace with yfinance for live data."""
-    random.seed(hash(ticker) % 10000)
-    dates = pd.date_range(end=datetime.today(), periods=252, freq="B")
-    price = 500.0
-    closes = []
-    for _ in dates:
-        price *= random.uniform(0.975, 1.025)
-        closes.append(round(price, 2))
-    df = pd.DataFrame({"Date": dates, "Close": closes})
-    df["MA20"]  = df["Close"].rolling(20).mean().round(2)
-    df["MA50"]  = df["Close"].rolling(50).mean().round(2)
-    return df
+    hist = yf.Ticker(ticker + ".KA").history(period="1y")
+    hist = hist[["Close"]].reset_index()
+    hist.columns = ["Date", "Close"]
+    hist["MA20"] = hist["Close"].rolling(20).mean().round(2)
+    hist["MA50"] = hist["Close"].rolling(50).mean().round(2)
+    return hist
 
 
 # ── Header ────────────────────────────────────────────────────────────────────
