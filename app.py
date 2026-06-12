@@ -194,7 +194,7 @@ display_cols = [
 styled = (
     filtered[display_cols]
     .style
-    .applymap(color_change, subset=["Change %"])
+    .map(color_change, subset=["Change %"])
     .format({
         "Price (PKR)": "{:.2f}",
         "Change %":    "{:+.2f}%",
